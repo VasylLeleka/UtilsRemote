@@ -1,73 +1,20 @@
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
-import java.util.Properties
 
 /**
  * Represents the base URL format for the repository.
  */
 val repository = "https://%sgithub.com/SpaceBank/Android-Space"
 
-val defaultBranches = hashMapOf<String, String>()
-
 /**
  * A mapping of module names to their respective configuration, if applicable.
  */
 val modules = hashMapOf<String, List<ModuleConfig>?>().apply {
-    fun addModule(moduleName: String, parentPath: String, modulePath: String) {
-        put(moduleName, listOf(ModuleConfig(parentPath = parentPath, modulePath = modulePath)))
-    }
-
-    fun addModules(moduleName: String, modules: List<Pair<String, String>>) {
-        put(moduleName, modules.map { (parentPath, modulePath) -> ModuleConfig(parentPath = parentPath, modulePath = modulePath) })
-    }
-
-    fun addEmptyModule(moduleName: String) {
-        put(moduleName, null)
-    }
-
-    addEmptyModule(moduleName = "build-logic")
-
-    addModule(moduleName = "Formatter", parentPath = "Space-ToolKits:Formatter", modulePath = "./Formatter/SpaceFormatter")
-
-    addModules(moduleName = "UI", modules = listOf("Space-App-UI" to "./UI/UI-App", "Space-Core:UI" to "./UI/SpaceUI"))
-
-    addModule(moduleName = "Assets", parentPath = "Space-Core:Assets", modulePath = "./Assets")
-
-    addModule(moduleName = "Core-Extension", parentPath = "Space-ToolKits:Extension", modulePath = "./Core-Extension/Extension")
-    addModule(moduleName = "Core-RemoteConfig", parentPath = "Space-Core:RemoteConfig", modulePath = "./Core-RemoteConfig/RemoteConfig")
-    addModule(moduleName = "Core-Domain", parentPath = "Space-Core:Domain", modulePath = "./Core-Domain/Domain")
-    addModule(moduleName = "Core-Test", parentPath = "Space-Core:Test", modulePath = "./Core-Test/Test")
-    addModule(moduleName = "Core-Navigation", parentPath = "Space-Core:Navigation", modulePath = "./Core-Navigation/Navigation")
-    addModule(moduleName = "Core-Network", parentPath = "Space-Core:Network", modulePath = "./Core-Network/Network")
-    addModule(moduleName = "Core-Common", parentPath = "Space-Core:Common", modulePath = "./Core-Common/Common")
-    addModule(moduleName = "Core-Models", parentPath = "Space-Core:Models", modulePath = "./Core-Models/Models")
-    addModule(moduleName = "Core-Presentation", parentPath = "Space-Core:Presentation", modulePath = "./Core-Presentation/Presentation")
-    addModule(moduleName = "Core-Database", parentPath = "Space-Core:Database", modulePath = "./Core-Database/Database")
-    addModule(moduleName = "Core-Data", parentPath = "Space-Core:Data", modulePath = "./Core-Data/Data")
-    addModule(moduleName = "Core-Services", parentPath = "Space-Core:Services", modulePath = "./Core-Services/Services")
-
-    addModule(moduleName = "ToolKits-Sentry", parentPath = "Space-ToolKits:Sentry", modulePath = "./ToolKits-Sentry/Sentry")
-    addModule(moduleName = "ToolKits-UserJourney", parentPath = "Space-ToolKits:UserJourney", modulePath = "./ToolKits-UserJourney/UserJourney")
-    addModule(moduleName = "ToolKits-Metrix", parentPath = "Space-ToolKits:Metrix", modulePath = "./ToolKits-Metrix/Metrix")
-    addModule(moduleName = "ToolKits-FeatureToggle", parentPath = "Space-ToolKits:FeatureToggle", modulePath = "./ToolKits-FeatureToggle/FeatureToggle")
-    addModule(moduleName = "ToolKits-Analytics", parentPath = "Space-ToolKits:Analytics", modulePath = "./ToolKits-Analytics/Analytics")
-    addModule(moduleName = "ToolKits-MySpace", parentPath = "Space-ToolKits:MySpace", modulePath = "./ToolKits-MySpace/MySpace")
-    addModule(moduleName = "ToolKits-PushNotifications", parentPath = "Space-ToolKits:PushNotifications", modulePath = "./ToolKits-PushNotifications/PushNotifications")
-    addModule(moduleName = "ToolKits-DeepLinking", parentPath = "Space-ToolKits:DeepLinking", modulePath = "./ToolKits-DeepLinking/DeepLinking")
-    addModule(moduleName = "ToolKits-Biometric", parentPath = "Space-ToolKits:Biometric", "./ToolKits-Biometric/Biometric")
-    addModules(
-        moduleName = "Libs",
-        modules = listOf(
-            "Space-Libs:Formatters" to "./Libs/Formatters",
-            "Space-Libs:NfcCardReader" to "./Libs/NfcCardReader",
-            "Space-Libs:PlayServices" to "./Libs/PlayServices",
-            "Space-Libs:TMXProfiling" to "./Libs/TMXProfiling",
-            "Space-Libs:TMXProfilingConnections" to "./Libs/TMXProfilingConnections"
-        )
-    )
+    put("build-logic", null)
+    put("Formatter", listOf(ModuleConfig(parentPath = "Space-ToolKits:Formatter", modulePath = "./Formatter/SpaceFormatter")))
+    put("Assets", listOf(ModuleConfig(parentPath = "Space-Core:Assets", modulePath = "./Assets")))
 }
-
 
 /**
  * Defines the configuration for a module including its parent path and module path.
@@ -134,40 +81,6 @@ fun cloneOrPullModule(module: String, callback: GitShellCallback) {
 }
 
 /**
- * Checks if current branch is detached head before pulling changes to avoid DETACHED HEAD merging issue
- *
- * If we are on detached head (tag) we need to move on dummy branch(master) and after that pull changes
- *
- * @param repoPath
- */
-fun checkForDetachedHead(repoPath: String) {
-    val cmd = arrayOf(
-        "git",
-        "-C",
-        repoPath,
-        "rev-parse",
-        "--abbrev-ref",
-        "HEAD",
-    )
-    val processBuilder = ProcessBuilder(*cmd).redirectErrorStream(true).start()
-    val output = StringBuilder()
-    BufferedReader(InputStreamReader(processBuilder.inputStream)).use { reader ->
-        var previousLineLength = 0
-        var line = reader.readLine()
-        if (line == "HEAD") {
-            val cmd = arrayOf(
-                "git",
-                "-C",
-                repoPath,
-                "checkout",
-                "master"
-            )
-            ProcessBuilder(*cmd).start().waitFor()
-        }
-    }
-}
-
-/**
  * Determines the Git command to execute based on whether the module repository exists locally.
  *
  * @param module The module name.
@@ -175,22 +88,13 @@ fun checkForDetachedHead(repoPath: String) {
  * @return An array representing the Git command to execute.
  */
 fun determineGitCommand(module: String, token: String): Array<String> {
-    val repoPath = getRepoPath(module)
+    val repoPath = "./$module"
     return if (File(repoPath).exists()) {
-        checkForDetachedHead(module)
         arrayOf("git", "-C", repoPath, "pull", "--progress")
     } else {
-        arrayOf(
-            "git",
-            "clone",
-            "--progress",
-            "${String.format(repository, token)}-$module.git",
-            repoPath
-        )
+        arrayOf("git", "clone", "--progress", "${String.format(repository, token)}-$module.git", repoPath)
     }
 }
-
-fun getRepoPath(module: String) = "./$module"
 
 /**
  * Updates the console output based on the current line of Git progress.
@@ -201,8 +105,7 @@ fun getRepoPath(module: String) = "./$module"
  */
 fun handleProgressUpdate(line: String, previousLineLength: Int): Int {
     if (line.startsWith("remote: Counting objects:") || line.startsWith("remote: Compressing objects:") ||
-        line.startsWith("Receiving objects:") || line.startsWith("Resolving deltas:")
-    ) {
+        line.startsWith("Receiving objects:") || line.startsWith("Resolving deltas:")) {
         System.out.print("\r\u001b[K${line.padEnd(previousLineLength, ' ')}")
         System.out.flush()
         return line.length
@@ -220,8 +123,7 @@ fun handleProgressUpdate(line: String, previousLineLength: Int): Int {
  */
 fun hasBuildGradleKts(directoryPath: String): Boolean {
     val directory = File("${rootProject.projectDir}/$directoryPath")
-    return directory.isDirectory && directory.listFiles()
-        ?.any { it.name == "build.gradle.kts" || it.name == "settings.gradle.kts" } ?: false
+    return directory.isDirectory && directory.listFiles()?.any { it.name == "build.gradle.kts" || it.name == "settings.gradle.kts" } ?: false
 }
 
 /**
@@ -231,43 +133,17 @@ fun hasBuildGradleKts(directoryPath: String): Boolean {
  * @param module The name of the module to attach.
  */
 fun attachModuleToProject(module: String) {
-    modules[module]?.forEach { config ->
-        if (!hasBuildGradleKts(config.modulePath)) {
-            println(
-                "\nFailed to attach module '$module'. Please ensure the module configuration is correct and try again. If issues persist, consider syncing Gradle manually.\n".colorize(
-                    AnsiColor.RED
-                )
-            )
+    modules[module]?.forEach {config ->
+        if(!hasBuildGradleKts(config.modulePath)){
+            println("\nFailed to attach module '$module'. Please ensure the module configuration is correct and try again. If issues persist, consider syncing Gradle manually.\n".colorize(AnsiColor.RED))
             return
         }
 
         include(":${config.parentPath}")
         project(":${config.parentPath}").projectDir = file(config.modulePath)
         // Updated success message to be more informative and use a color indicating success
-        println(
-            "Module '${
-                config.modulePath.split("/").last()
-            }' successfully attached at '${config.parentPath}'".colorize(AnsiColor.MAGENTA)
-        )
-    } ?: println(
-        "No specific configuration for module '$module', attached by default.".colorize(
-            AnsiColor.YELLOW
-        )
-    )
-}
-
-fun setDefaultBranch(module: String) {
-    val defaultBranch = defaultBranches[module]
-    val cmd = arrayOf(
-        "git",
-        "-C",
-        getRepoPath(module),
-        "checkout",
-        defaultBranch
-    )
-    val message = "Switching branch to $defaultBranch"
-    println(message.colorize(AnsiColor.GREEN))
-    ProcessBuilder(*cmd).start().waitFor()
+        println("Module '${config.modulePath.split("/").last()}' successfully attached at '${config.parentPath}'".colorize(AnsiColor.MAGENTA))
+    } ?: println("No specific configuration for module '$module', attached by default.".colorize(AnsiColor.YELLOW))
 }
 
 /**
@@ -284,81 +160,19 @@ fun isCIEnvironment(): Boolean {
  * Fetches all specified modules by executing Git commands for each.
  */
 fun fetchAllModules() {
-    val isAutoCheckoutEnabled = isAutoCheckoutEnabled()
-    if (isAutoCheckoutEnabled && (isSyncing() || isCIEnvironment())) {
-        readEnvironmentConfig()
-    }
     for (module in modules.keys) {
-        if (isSyncing().not() && !isCIEnvironment()) {
+        if (System.getProperty("idea.sync.active") != "true"  && !isCIEnvironment()){
             attachModuleToProject(module)
-        } else {
+        }else{
             cloneOrPullModule(module, object : GitShellCallback {
                 override fun onSuccess(message: String, module: String) {
                     println(message.colorize(AnsiColor.GREEN))
                     attachModuleToProject(module)
-                    if (isAutoCheckoutEnabled) {
-                        setDefaultBranch(module)
-                    }
                 }
-
                 override fun onInfo(message: String) = println(message)
-                override fun onError(errorMessage: String) {
-                    println(errorMessage.colorize(AnsiColor.RED))
-                    throw SyncFailedException("Sync failed, please check error message above")
-                }
+                override fun onError(errorMessage: String) = println(errorMessage.colorize(AnsiColor.RED))
             })
         }
-    }
-}
-
-fun isSyncing() = System.getProperty("idea.sync.active") == "true"
-
-/**
- * Checks for is_auto_checkout_enabled property if we should automatically check out branches from dev.config on gradle sync
- */
-fun isAutoCheckoutEnabled(): Boolean {
-    return try {
-        val localProperties = Properties().apply {
-            load(File("local.properties").inputStream())
-        }
-        val isAutoCheckoutEnabled =
-            localProperties.getOrDefault("is_auto_checkout_enabled", "true").toString().toBoolean()
-        val status = if (isAutoCheckoutEnabled) "enabled" else "disabled"
-        println(
-            ("Auto checkout of branches from dev.config is $status when syncing gradle" +
-                "\nIf you want to disable that functionality add is_auto_checkout_enabled=false in local.properties").colorize(
-                AnsiColor.GREEN
-            )
-        )
-        return isAutoCheckoutEnabled
-    } catch (e: Exception) {
-        true
-    }
-}
-
-fun readEnvironmentConfig() {
-    val envValue = settings.extra.get("app_env").toString()
-    val env = Environment.fromValue(envValue)
-    val infoFile = File(env.filePath)
-    infoFile.readLines().forEach {
-        val (module, branch) = it.split("=")
-        defaultBranches[module] = branch
-        println("Default branch for $module is $branch")
-    }
-}
-
-enum class Environment(val envValue: String, val filePath: String) {
-    Production("prod", "config/prod.config"),
-    Development("dev", "config/dev.config");
-
-    companion object {
-        fun fromValue(value: String) = Environment.values().firstOrNull { it.envValue == value }
-            ?: throw IllegalStateException(
-                """
-                    $value is not correct environment,
-                    use: ${Production.envValue} or ${Development.envValue}
-                """.trimIndent()
-            )
     }
 }
 
@@ -386,5 +200,3 @@ fun String.colorize(color: AnsiColor): String = "${color.code}$this${AnsiColor.R
  * initiate module fetching.
  */
 fetchAllModules()
-
-data class SyncFailedException(override val message: String): Exception(message)
