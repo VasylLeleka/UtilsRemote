@@ -38,7 +38,7 @@ fun parsePropertiesFile(filePath: String): HashMap<String, List<ModuleConfig>?> 
     return resultMap
 }
 
-val modulesMap = parsePropertiesFile("/Users/vasylleleka/Documents/LastSpace/Android-Space/models.properties")
+val modulesMap = parsePropertiesFile("$rootDir/modules.properties")
 
 /**
  * A mapping of module names to their respective configuration, if applicable.
