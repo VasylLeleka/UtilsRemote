@@ -1,7 +1,9 @@
+
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
 import java.util.Properties
+import java.io.FileInputStream
 
 /**
  * Represents the base URL format for the repository.
@@ -10,64 +12,38 @@ val repository = "https://%sgithub.com/SpaceBank/Android-Space"
 
 val defaultBranches = hashMapOf<String, String>()
 
+fun parsePropertiesFile(filePath: String): HashMap<String, List<ModuleConfig>?> {
+    val properties = Properties().apply {
+        load(FileInputStream(filePath))
+    }
+
+    val resultMap = HashMap<String, List<ModuleConfig>?>()
+
+    properties.forEach { key, value ->
+        val name = key as String
+        val configsString = value.toString().substringAfter("configs=")
+
+        val configs = if (configsString == "null") {
+            null
+        } else {
+            configsString.split(";").map {
+                val parts = it.split(",")
+                ModuleConfig(parts[0], parts[1])
+            }
+        }
+
+        resultMap[name] = configs
+    }
+
+    return resultMap
+}
+
+val modulesMap = parsePropertiesFile("/Users/vasylleleka/Documents/LastSpace/Android-Space/models.properties")
+
 /**
  * A mapping of module names to their respective configuration, if applicable.
  */
-val modules = hashMapOf<String, List<ModuleConfig>?>().apply {
-    fun addModule(moduleName: String, parentPath: String, modulePath: String) {
-        put(moduleName, listOf(ModuleConfig(parentPath = parentPath, modulePath = modulePath)))
-    }
-
-    fun addModules(moduleName: String, modules: List<Pair<String, String>>) {
-        put(moduleName, modules.map { (parentPath, modulePath) -> ModuleConfig(parentPath = parentPath, modulePath = modulePath) })
-    }
-
-    fun addEmptyModule(moduleName: String) {
-        put(moduleName, null)
-    }
-
-    addEmptyModule(moduleName = "build-logic")
-
-    addModule(moduleName = "Formatter", parentPath = "Space-ToolKits:Formatter", modulePath = "./Formatter/SpaceFormatter")
-
-    addModules(moduleName = "UI", modules = listOf("Space-App-UI" to "./UI/UI-App", "Space-Core:UI" to "./UI/SpaceUI"))
-
-    addModule(moduleName = "Assets", parentPath = "Space-Core:Assets", modulePath = "./Assets")
-
-    addModule(moduleName = "Core-Extension", parentPath = "Space-ToolKits:Extension", modulePath = "./Core-Extension/Extension")
-    addModule(moduleName = "Core-RemoteConfig", parentPath = "Space-Core:RemoteConfig", modulePath = "./Core-RemoteConfig/RemoteConfig")
-    addModule(moduleName = "Core-Domain", parentPath = "Space-Core:Domain", modulePath = "./Core-Domain/Domain")
-    addModule(moduleName = "Core-Test", parentPath = "Space-Core:Test", modulePath = "./Core-Test/Test")
-    addModule(moduleName = "Core-Navigation", parentPath = "Space-Core:Navigation", modulePath = "./Core-Navigation/Navigation")
-    addModule(moduleName = "Core-Network", parentPath = "Space-Core:Network", modulePath = "./Core-Network/Network")
-    addModule(moduleName = "Core-Common", parentPath = "Space-Core:Common", modulePath = "./Core-Common/Common")
-    addModule(moduleName = "Core-Models", parentPath = "Space-Core:Models", modulePath = "./Core-Models/Models")
-    addModule(moduleName = "Core-Presentation", parentPath = "Space-Core:Presentation", modulePath = "./Core-Presentation/Presentation")
-    addModule(moduleName = "Core-Database", parentPath = "Space-Core:Database", modulePath = "./Core-Database/Database")
-    addModule(moduleName = "Core-Data", parentPath = "Space-Core:Data", modulePath = "./Core-Data/Data")
-    addModule(moduleName = "Core-Services", parentPath = "Space-Core:Services", modulePath = "./Core-Services/Services")
-
-    addModule(moduleName = "ToolKits-Sentry", parentPath = "Space-ToolKits:Sentry", modulePath = "./ToolKits-Sentry/Sentry")
-    addModule(moduleName = "ToolKits-UserJourney", parentPath = "Space-ToolKits:UserJourney", modulePath = "./ToolKits-UserJourney/UserJourney")
-    addModule(moduleName = "ToolKits-Metrix", parentPath = "Space-ToolKits:Metrix", modulePath = "./ToolKits-Metrix/Metrix")
-    addModule(moduleName = "ToolKits-FeatureToggle", parentPath = "Space-ToolKits:FeatureToggle", modulePath = "./ToolKits-FeatureToggle/FeatureToggle")
-    addModule(moduleName = "ToolKits-Analytics", parentPath = "Space-ToolKits:Analytics", modulePath = "./ToolKits-Analytics/Analytics")
-    addModule(moduleName = "ToolKits-MySpace", parentPath = "Space-ToolKits:MySpace", modulePath = "./ToolKits-MySpace/MySpace")
-    addModule(moduleName = "ToolKits-PushNotifications", parentPath = "Space-ToolKits:PushNotifications", modulePath = "./ToolKits-PushNotifications/PushNotifications")
-    addModule(moduleName = "ToolKits-DeepLinking", parentPath = "Space-ToolKits:DeepLinking", modulePath = "./ToolKits-DeepLinking/DeepLinking")
-    addModule(moduleName = "ToolKits-Biometric", parentPath = "Space-ToolKits:Biometric", "./ToolKits-Biometric/Biometric")
-    addModules(
-        moduleName = "Libs",
-        modules = listOf(
-            "Space-Libs:Formatters" to "./Libs/Formatters",
-            "Space-Libs:NfcCardReader" to "./Libs/NfcCardReader",
-            "Space-Libs:PlayServices" to "./Libs/PlayServices",
-            "Space-Libs:TMXProfiling" to "./Libs/TMXProfiling",
-            "Space-Libs:TMXProfilingConnections" to "./Libs/TMXProfilingConnections"
-        )
-    )
-}
-
+val modules =  modulesMap
 
 /**
  * Defines the configuration for a module including its parent path and module path.
