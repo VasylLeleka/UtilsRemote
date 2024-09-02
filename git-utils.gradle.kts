@@ -24,8 +24,7 @@ fun parseModules(filePath: String): HashMap<String, List<ModuleConfig>?> {
         val moduleName = entry.key as String
         val configsValue = entry.value as String
         val included = configsValue.contains("included=true")
-        if (!included) {
-            
+        if (included) {
             if (configsValue.contains("configs=null")) {
                 modulesMap[moduleName] = null
             } else {
