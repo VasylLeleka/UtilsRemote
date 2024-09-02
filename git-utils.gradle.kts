@@ -12,33 +12,39 @@ val repository = "https://%sgithub.com/SpaceBank/Android-Space"
 
 val defaultBranches = hashMapOf<String, String>()
 
-fun parsePropertiesFile(filePath: String): HashMap<String, List<ModuleConfig>?> {
-    val properties = Properties().apply {
-        load(FileInputStream(filePath))
+
+fun parseModules(filePath: String): HashMap<String, List<ModuleConfig>?> {
+    val modulesMap = HashMap<String, List<ModuleConfig>?>()
+    val properties = Properties()
+    File(filePath).inputStream().use { inputStream ->
+        properties.load(inputStream)
     }
 
-    val resultMap = HashMap<String, List<ModuleConfig>?>()
-
-    properties.forEach { key, value ->
-        val name = key as String
-        val configsString = value.toString().substringAfter("configs=")
-
-        val configs = if (configsString == "null") {
-            null
-        } else {
-            configsString.split(";").map {
-                val parts = it.split(",")
-                ModuleConfig(parts[0], parts[1])
+    for (entry in properties.entries) {
+        val moduleName = entry.key as String
+        val configsValue = entry.value as String
+        val included = configsValue.contains("included=true")
+        if (!included) {
+            
+            if (configsValue.contains("configs=null")) {
+                modulesMap[moduleName] = null
+            } else {
+                val configsList = configsValue
+                    .substringAfter("configs=")
+                    .split(";")
+                    .map {
+                        val configParts = it.split(",")
+                        ModuleConfig(parentPath = configParts[0], modulePath = configParts[1])
+                    }
+                modulesMap[moduleName] = configsList
             }
         }
-
-        resultMap[name] = configs
     }
 
-    return resultMap
+    return modulesMap
 }
 
-val modulesMap = parsePropertiesFile("$rootDir/modules.properties")
+val modulesMap = parseModules("$rootDir/modules.properties")
 
 /**
  * A mapping of module names to their respective configuration, if applicable.
