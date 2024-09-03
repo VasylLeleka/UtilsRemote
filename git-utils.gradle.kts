@@ -1,4 +1,4 @@
-
+import java.net.URL
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -9,6 +9,30 @@ import java.io.FileInputStream
  * Represents the base URL format for the repository.
  */
 val repository = "https://%sgithub.com/SpaceBank/Android-Space"
+val gitModulesUrl = "https://raw.githubusercontent.com/VasylLeleka/UtilsRemote/main/modules.properties"
+
+fun downloadFile(url: String, outputFile: File) {
+    try {
+        URL(url).openStream().use { input ->
+            outputFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+        println("Download successful: ${outputFile.absolutePath}")
+    } catch (e: Exception) {
+        println("Download failed: ${e.message}")
+        e.printStackTrace()
+    }
+}
+
+val modulesFile = File(rootDir, "modules.properties")
+
+if(!modulesFile.exists()) {
+    println("File does not exist, downloading...")
+    downloadFile(gitModulesUrl, modulesFile)
+} else {
+    println("Modules already exists...")
+}
 
 val defaultBranches = hashMapOf<String, String>()
 
