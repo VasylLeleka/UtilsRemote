@@ -40,6 +40,7 @@ val defaultBranches = hashMapOf<String, String>()
 fun parseModules(filePath: String): HashMap<String, List<ModuleConfig>?> {
     val modulesMap = HashMap<String, List<ModuleConfig>?>()
     val properties = Properties()
+    
     File(filePath).inputStream().use { inputStream ->
         properties.load(inputStream)
     }
@@ -48,18 +49,27 @@ fun parseModules(filePath: String): HashMap<String, List<ModuleConfig>?> {
         val moduleName = entry.key as String
         val configsValue = entry.value as String
         val included = configsValue.contains("included=true")
+        
         if (included) {
-            if (configsValue.contains("configs=null")) {
-                modulesMap[moduleName] = null
-            } else {
-                val configsList = configsValue
-                    .substringAfter("configs=")
-                    .split(";")
-                    .map {
+            if (configsValue.contains("configs=")) {
+                val configsString = configsValue.substringAfter("configs=")
+                
+                if (configsString.isNotBlank()) {
+                    val configsList = configsString.split(";").mapNotNull {
                         val configParts = it.split(",")
-                        ModuleConfig(parentPath = configParts[0], modulePath = configParts[1])
+                        if (configParts.size >= 2) {
+                            ModuleConfig(parentPath = configParts[0], modulePath = configParts[1])
+                        } else {
+                            println("Skipping invalid config entry: $it")
+                            null
+                        }
                     }
-                modulesMap[moduleName] = configsList
+                    modulesMap[moduleName] = configsList
+                } else {
+                    modulesMap[moduleName] = generateStandardConfig(moduleName)
+                }
+            } else {
+                modulesMap[moduleName] = generateStandardConfig(moduleName)
             }
         }
     }
@@ -67,12 +77,28 @@ fun parseModules(filePath: String): HashMap<String, List<ModuleConfig>?> {
     return modulesMap
 }
 
-val modulesMap = parseModules("$rootDir/modules.properties")
+fun generateStandardConfig(moduleName: String): List<ModuleConfig>? {
+    return when {
+        moduleName.startsWith("Core-") -> listOf(
+            ModuleConfig(
+                parentPath = "Space-Core:${moduleName.removePrefix("Core-")}",
+                modulePath = "./$moduleName/${moduleName.removePrefix("Core-")}"
+            )
+        )
+        moduleName.startsWith("ToolKits-") -> listOf(
+            ModuleConfig(
+                parentPath = "Space-ToolKits:${moduleName.removePrefix("ToolKits-")}",
+                modulePath = "./$moduleName/${moduleName.removePrefix("ToolKits-")}"
+            )
+        )
+        else -> null
+    }
+}
 
 /**
- * A mapping of module names to their respective configuration, if applicable.
+ * Defines the configuration for a module including its parent path and module path.
  */
-val modules =  modulesMap
+val modules = parseModules("$rootDir/modules.properties")
 
 /**
  * Defines the configuration for a module including its parent path and module path.
