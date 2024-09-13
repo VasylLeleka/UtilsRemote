@@ -9,96 +9,122 @@ import java.io.FileInputStream
  * Represents the base URL format for the repository.
  */
 val repository = "https://%sgithub.com/SpaceBank/Android-Space"
-val gitModulesUrl = "https://raw.githubusercontent.com/VasylLeleka/UtilsRemote/main/modules.properties"
-
-fun downloadFile(url: String, outputFile: File) {
-    try {
-        URL(url).openStream().use { input ->
-            outputFile.outputStream().use { output ->
-                input.copyTo(output)
-            }
-        }
-        println("Download successful: ${outputFile.absolutePath}")
-    } catch (e: Exception) {
-        println("Download failed: ${e.message}")
-        e.printStackTrace()
-    }
-}
-
-val modulesFile = File(rootDir, "modules.properties")
-
-if(!modulesFile.exists()) {
-    println("File does not exist, downloading...")
-    downloadFile(gitModulesUrl, modulesFile)
-} else {
-    println("Modules already exists...")
-}
 
 val defaultBranches = hashMapOf<String, String>()
 
-
-fun parseModules(filePath: String): HashMap<String, List<ModuleConfig>?> {
+/**
+ * Parce module.propersties file
+ * module had to be presentet in format :
+ * build-logic=included=true
+ * --------
+ *
+ * or
+ *
+ * UI=included=true
+ * parentPath=Space-App-UI
+ * modulePath=./UI/UI-App
+ * --------
+ *
+ * or
+ *
+ * UI=included=true
+ * parentPath=Space-App-UI
+ * modulePath=./UI/UI-App
+ *
+ * parentPath=Space-Core:UI
+ * modulePath=./UI/SpaceUI
+ * --------
+ *
+ * in case of [included=true] that module will be included
+ * and if dont want to have module just make included value equals false
+ * */
+fun parseProperties(filePath: String): HashMap<String, List<ModuleConfig>?> {
     val modulesMap = HashMap<String, List<ModuleConfig>?>()
-    val properties = Properties()
-    
-    File(filePath).inputStream().use { inputStream ->
-        properties.load(inputStream)
-    }
+    val lines = File(filePath).readLines()
 
-    for (entry in properties.entries) {
-        val moduleName = entry.key as String
-        val configsValue = entry.value as String
-        val included = configsValue.contains("included=true")
-        
-        if (included) {
-            if (configsValue.contains("configs=")) {
-                val configsString = configsValue.substringAfter("configs=")
-                
-                if (configsString.isNotBlank()) {
-                    val configsList = configsString.split(";").mapNotNull {
-                        val configParts = it.split(",")
-                        if (configParts.size >= 2) {
-                            ModuleConfig(parentPath = configParts[0], modulePath = configParts[1])
-                        } else {
-                            println("Skipping invalid config entry: $it")
-                            null
+    var index = 0
+    val totalLines = lines.size
+
+    while (index < totalLines) {
+        var line = lines[index].trim()
+
+        if (line.isEmpty() || line == "--------") {
+            index++
+            continue
+        }
+
+        // Check if module had to be included
+        if (line.contains("included=false")) {
+            //We skip all lines till we will not get new module
+            index++
+            while (index < totalLines && lines[index].trim() != "--------") {
+                index++
+            }
+            // Skip separator
+            if (index < totalLines && lines[index].trim() == "--------") {
+                index++
+            }
+            continue
+        }
+
+        // Handle new module
+        if (!line.startsWith("parentPath") && !line.startsWith("modulePath")) {
+            val moduleName = line.split("=")[0].trim()
+            val configs = mutableListOf<ModuleConfig>()
+
+            index++
+            while (index < totalLines) {
+                line = lines[index].trim()
+
+                // Skip deviders and empty lines
+                if (line.isEmpty()) {
+                    index++
+                    continue
+                }
+
+                if (line == "--------") {
+                    index++
+                    break // Finishing handling of current module
+                }
+
+                // Read `parentPath` and `modulePath`
+                if (line.startsWith("parentPath")) {
+                    val parentPath = line.substringAfter("=").trim()
+
+                    index++
+                    if (index < totalLines) {
+                        val modulePathLine = lines[index].trim()
+                        if (modulePathLine.startsWith("modulePath")) {
+                            val modulePath = modulePathLine.substringAfter("=").trim()
+                            configs.add(ModuleConfig(parentPath, modulePath))
+                            index++
+                            continue
                         }
                     }
-                    modulesMap[moduleName] = configsList
                 } else {
-                    modulesMap[moduleName] = generateStandardConfig(moduleName)
+                    // if there is no config for module just skip
+                    break
                 }
-            } else {
-                modulesMap[moduleName] = generateStandardConfig(moduleName)
             }
+
+            // Add new module to map
+            if (configs.isNotEmpty()) {
+                modulesMap[moduleName] = configs
+            } else {
+                modulesMap[moduleName] = null
+            }
+        } else {
+            index++
         }
     }
 
     return modulesMap
 }
 
-fun generateStandardConfig(moduleName: String): List<ModuleConfig>? {
-    return when {
-        moduleName.startsWith("Core-") -> listOf(
-            ModuleConfig(
-                parentPath = "Space-Core:${moduleName.removePrefix("Core-")}",
-                modulePath = "./$moduleName/${moduleName.removePrefix("Core-")}"
-            )
-        )
-        moduleName.startsWith("ToolKits-") -> listOf(
-            ModuleConfig(
-                parentPath = "Space-ToolKits:${moduleName.removePrefix("ToolKits-")}",
-                modulePath = "./$moduleName/${moduleName.removePrefix("ToolKits-")}"
-            )
-        )
-        else -> null
-    }
-}
-
 /**
  * Defines the configuration for a module including its parent path and module path.
  */
-val modules = parseModules("$rootDir/modules.properties")
+val modules = parseProperties("$rootDir/modules.properties")
 
 /**
  * Defines the configuration for a module including its parent path and module path.
